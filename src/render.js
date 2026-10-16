@@ -5,6 +5,7 @@ import { CARS } from '../shared/cars.js';
 import { mulberry32 } from '../shared/math.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { buildKitProps } from './props.js';
 
 const TMP = new THREE.Vector3();
 
@@ -101,6 +102,7 @@ export function buildTrackMeshes(trackId, theme, quality) {
   }
 
   group.add(buildScenery(t, theme, trackId, quality));
+  group.add(buildKitProps(trackId, quality));
   return { group, track: t };
 }
 
