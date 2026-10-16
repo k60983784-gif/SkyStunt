@@ -289,7 +289,8 @@ function startOnlineFlow(action, code) {
     },
     onError: (m) => {
       if (state.screen === 'lobby' || state.screen === 'setup') showMsg(m.msg);
-      else g.toast(m.msg, 'bad');
+      else if (state.screen === 'connecting') showJoinError(m.msg);
+      else if (g && g.toast) g.toast(m.msg, 'bad');
     },
     onNotice: () => {},
     onPing: (ms) => {
@@ -313,6 +314,14 @@ function startOnlineFlow(action, code) {
 function showMsg(text) {
   const el = $('#setupErr') || $('#lobbyMsg');
   if (el) el.innerHTML = `<div class="msg">${escapeHtml(text)}</div>`;
+}
+
+function showJoinError(text) {
+  state.screen = 'joinError';
+  if (state.net) state.net.disconnect();
+  show(`<div class="card" style="text-align:center"><h2>Couldn't join</h2><p class="sub">${escapeHtml(text || 'The server rejected this join.')}</p>
+    <div class="row" style="justify-content:center"><button class="btn cyan" id="bJoinBack">Back</button></div></div>`);
+  $('#bJoinBack').onclick = () => renderTitle();
 }
 
 function showOfflineChoice(detail) {
