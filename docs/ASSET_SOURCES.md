@@ -1,6 +1,6 @@
 # Public assets: what was checked (2026-10-17)
 
-Only sources that were actually opened or returned in search results during this work are listed. A model is "in game" only if the game loads it. Models in `public/models/library/` are for the library viewer (`/library.html`) and are not yet placed in tracks.
+Only sources that were actually opened or returned in search results during this work are listed. A model is "in game" only if the game loads it. Models in `public/models/library/` are for the library viewer (`/library.html`). The subset used as track scenery is listed under "Track scenery" below.
 
 ## Car models (in game)
 
@@ -21,6 +21,19 @@ The library holds 491 GLBs, 12 MB in total. Every model has a per-pack `License.
 
 All three packs are CC0 by their own licence files. Credit to Kenney is requested but not required. The packs were downloaded as zips from the kenney.nl pages. Only `Models/GLTF format/` (Racing, Nature) and `Models/GLB format/` (Car) were copied.
 
+## Track scenery (in game)
+
+`src/props.js` loads these models and places them as visual-only instanced props. They have no colliders, so physics and netcode are unchanged.
+
+| Track | Pack | Models | Placement |
+|---|---|---|---|
+| Neon Skyline | Racing Kit (CC0) | `barrierRed`, `barrierWhite` | Walls along both road edges, every 6 m, skipped near gaps |
+| Canyon Skyway | Nature Kit (CC0) | `rock_largeA`, `rock_largeC`, `rock_tallB`, `plant_bushLarge` | Off-road, 18–70 m out |
+| Volcanic Ruins | Nature Kit (CC0) | `rock_largeD`, `rock_tallE`, `rock_smallE` | Off-road, 16–60 m out |
+| Glacier Overpass | Nature Kit (CC0) | `tree_pineRoundA`, `tree_pineRoundC`, `tree_pineSmallA`, `tree_pineTallB` | Off-road, 18–70 m out |
+
+Model materials are replaced with matte copies that keep the kit colour, because the kit materials are fully metallic and render near-black without an environment map.
+
 ## Palette reference
 
 - No official Forza Horizon 5 UI colour palette was found in the sources checked.
@@ -32,5 +45,4 @@ All three packs are CC0 by their own licence files. Credit to Kenney is requeste
 
 ## Not yet done
 
-- Placing environment kit pieces (trees, track-side props) into the tracks. The library is ready; the scene code is not changed.
-- Checking that every Racing and Nature model renders on a device GPU. Only the library viewer test has run, in headless Chromium.
+- Checking the props on a device GPU. The canyon props were not clearly visible in the one screenshot taken (`tests/browser/track-props.mjs`), so their placement is unconfirmed.
