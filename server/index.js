@@ -209,6 +209,24 @@ async function main() {
   server.listen(PORT, HOST, () => {
     log(`SkyStunt.io server v${VERSION} listening on ${HOST}:${PORT} (ws path /ws, health /healthz)`);
   });
+  startKeepAlive();
+}
+
+// Keep-alive for hosts that sleep idle services (Render free web services sleep after 15 min
+// with no inbound traffic). Pings this server's own public /healthz on an interval.
+// Enabled when KEEPALIVE_URL is set, or automatically when RENDER_EXTERNAL_URL is set (Render sets it).
+// Disable with KEEPALIVE=0. Interval: KEEPALIVE_MS (default 10 minutes).
+function startKeepAlive() {
+  if (process.env.KEEPALIVE === '0') return;
+  const base = process.env.KEEPALIVE_URL || (process.env.RENDER_EXTERNAL_URL ? process.env.RENDER_EXTERNAL_URL + '/healthz' : '');
+  if (!base) return;
+  const every = Number(process.env.KEEPALIVE_MS || 10 * 60 * 1000);
+  const ping = () => fetch(base, { headers: { 'user-agent': 'skystunt-keepalive' } })
+    .then((r) => log('keep-alive ping', r.status))
+    .catch((e) => log('keep-alive ping failed', e.message));
+  setTimeout(ping, 5000).unref();
+  setInterval(ping, every).unref();
+  log(`keep-alive enabled: ${base} every ${Math.round(every / 1000)} s`);
 }
 
 const shutdown = () => {

@@ -1,14 +1,22 @@
-# Render Blueprint (free/paid web service). Deploy with "New > Blueprint" from the repository.
+# Render Blueprint: free Node web service (no credit card needed for the free instance).
+# Free instances sleep after 15 minutes without inbound traffic. The server pings its own
+# /healthz every 10 minutes (keep-alive, enabled automatically via RENDER_EXTERNAL_URL).
+# Free instances have 0.1 CPU and 512 MB RAM, so MAX_ROOMS is kept low. Not measured on Render yet.
 services:
   - type: web
     name: skystunt-io
-    runtime: docker
-    plan: starter            # free instances sleep when idle, which would drop live races
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --legacy-peer-deps && npx vite build
+    startCommand: node server/index.js
     healthCheckPath: /healthz
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: MAX_ROOMS
-        value: "40"
+        value: "4"
       - key: MAX_CONNECTIONS
-        value: "200"
+        value: "40"
       - key: SKYSTUNT_LOG
         value: "1"
