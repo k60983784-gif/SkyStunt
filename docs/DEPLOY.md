@@ -53,24 +53,26 @@ curl -s http://localhost:8080/healthz
 
 The `Dockerfile` builds `dist/` in one stage and runs `server/index.js` as the `node` user in the second stage. `.dockerignore` keeps `node_modules`, `tests`, `scratch`, and `docs` out of the image.
 
-## 4. Several-day hosting on Northflank (status: API key verified, service not yet created)
+## 4. Several-day hosting on Render (deployed 2026-10-16)
 
-Verified:
-- The API token works. It can see one project, `default`, which has no services yet (`GET /v1/projects/default/services`).
-- Northflank's API docs say a public GitHub repo can be built without linking a Git account. Only private repos need that link.
+Live: https://skystunt-io.onrender.com (service `srv-db8takcs728c73b0mln0`, owner workspace `tea-db8t9sbl550s73f4gq20`, Oregon, free plan, Node runtime).
 
-Not verified: the free Sandbox CPU and memory limits (F08 says only "always-on, 2 free services"). The script uses `nf-compute-20` (0.2 shared vCPU, 512 MB, list price $5.40/mo) and a build plan `nf-compute-200-8`. Check both in the dashboard before relying on them.
+How it was set up (repeat for a new service):
 
-Steps:
-1. Put the project in a **public** GitHub repo: `git remote add origin https://github.com/<you>/skystunt.git && git push -u origin main`. The repo already has one local commit (`main`).
-2. Dry run: `NF_REPO_URL=https://github.com/<you>/skystunt NF_PROJECT_ID=default node scripts/northflank-deploy.mjs`. Check the payload.
-3. Create the service: `NORTHFLANK_API_TOKEN=... NF_PROJECT_ID=default NF_REPO_URL=https://github.com/<you>/skystunt node scripts/northflank-deploy.mjs --apply`. This creates a combined service that builds the `Dockerfile` on Northflank and deploys it. The response includes the service ID.
-4. Wait for the build, then check the public URL: `curl https://<url>/healthz`, then `node tests/browser/smoke.mjs https://<url>/`.
-5. Revoke the API token in Northflank settings once the deploy is verified. It was pasted into a chat.
+1. Sign up at render.com (GitHub login). No card for the free web service.
+2. Account Settings > API Keys > create a key. Pass it only as an environment variable (`RENDER_API_KEY`). Never commit it.
+3. `GET https://api.render.com/v1/owners` to find the owner id.
+4. `POST https://api.render.com/v1/services` with `type: web_service`, `repo: https://github.com/k60983784-gif/SkyStunt`, `branch: main`, `autoDeploy: yes`, and `serviceDetails` (`env: node`, `plan: free`, `region: oregon`, `healthCheckPath: /healthz`, build `npm ci --legacy-peer-deps && npx vite build`, start `node server/index.js`). Env vars: `NODE_VERSION=22`, `MAX_ROOMS=4`, `MAX_CONNECTIONS=40`, `SKYSTUNT_LOG=1`. The same settings are in `render.yaml`.
+5. The build and start steps ran on Render. The deploy reached `live` in about 40 s.
 
-Unverified until run: the combined-service response, whether WebSockets pass through Northflank's public port, and whether the Sandbox allows these plans. The image-based route (`NF_IMAGE`) remains in the script as a fallback, but it needs a registry first.
+Keep-alive: free instances sleep after 15 min with no inbound traffic. The server pings its own `/healthz` every 10 min (`KEEPALIVE_URL`, or `RENDER_EXTERNAL_URL` set by Render; `KEEPALIVE=0` disables; `KEEPALIVE_MS` changes the interval).
 
-## 5. What I need from you to continue
+Free-plan limits: 0.1 CPU, 512 MB RAM, no persistent disk, restarts possible, in-memory rooms lost on restart. Capacity under load is not measured.
 
-- To deploy to Northflank: confirm you want me to proceed with your account. Either log in and share an API token, or connect the GitHub repo yourself and tell me the service URL.
-- Do not share passwords. An API token is enough.
+## 5. Northflank (dropped)
+
+Northflank was tried first. Its pricing page lists a free Sandbox, but creating any service returned HTTP 409 "Please complete your account by adding a default payment method" with plans nf-compute-10 through nf-compute-200-8. No service was created. `scripts/northflank-deploy.mjs` remains in the repo but is not used.
+
+## 6. Docker (not used on Render)
+
+`Dockerfile` builds the same app for any container host. It has not been built in this sandbox (no Docker).

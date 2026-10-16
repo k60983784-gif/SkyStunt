@@ -117,3 +117,20 @@ See `HOSTING_SURVEY.md` for the full list. Summary of what was run here:
 - Several-day uptime of any host (no host has been run for more than a few hours).
 - Northflank, Render, Koyeb, Railway, Fly, Zeabur, Hugging Face: not deployed (accounts needed; see `DEPLOY.md`).
 - Real-GPU frame rate, touch input, rooms with more than 2 humans, reconnect after a server restart, and load testing: unchanged from the list above.
+
+## Render deploy checks (2026-10-16)
+
+Target: https://skystunt-io.onrender.com (fresh GitHub clone at `263cbf8`; Render build `npm ci --legacy-peer-deps && npx vite build`; start `node server/index.js`).
+
+| Check | Result |
+|---|---|
+| Clean clone build and run locally | PASS (`vite build` exit 0; `/healthz` 200; index 200, 2095 B) |
+| Render deploy | live, about 40 s from create (`dep-db8takcs728c73b0mln0`) |
+| `/healthz` and index on Render | 200 |
+| `tests/multiplayer.test.mjs` on Render | 20/21. Failed: "oversized payload closes that socket only" (expected close 1009; got 1006 after about 5 s, socket still open for the test). Other 20 pass, including reconnect and malformed JSON. Localhost run 21/21 |
+| `tests/browser/smoke.mjs` on Render | PASS (WebGL 2, 0 console errors) |
+| `tests/browser/solo.mjs` on Render | PASS (0 errors, timer 00:31.65) |
+| `tests/browser/online.mjs` on Render | PASS (2 browsers, same room, 2 players seen, 0 errors) |
+| Keep-alive | Ping at start (200) and at +10 min (200). Uptime continuous (790 s at 07:55 UTC, no restart) |
+
+Not tested here: days-long uptime, restarts, sleep after 15 min without pings, load with 4 rooms, touch on a device.

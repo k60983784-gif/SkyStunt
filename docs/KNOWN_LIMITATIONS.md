@@ -20,8 +20,12 @@ Ordered by how much they affect play. "Observed" means seen in a test or run in 
 
 ## Multiplayer and hosting
 
-11. **No multiplayer on the multi-day link.** The public ship.place link (`modest-shirt-zza26.ship.place`) is static: it runs offline solo only. It expires 2026-11-15 unless claimed. The full game with multiplayer is only at temporary links. **No durable public deployment with a server.** The only playable multiplayer links are temporary (Cloudflare Quick Tunnel, localhost.run). They last as long as this sandbox and its processes run. Tested and not playable: Serveo, localtunnel, Pinggy free, tunl.gg (see `HOSTING_SURVEY.md`). Northflank Sandbox is the recommended several-day option, but it needs an account and its free-service limits are unpublished.
-12. **Docker and Render not verified.** The Dockerfile and `render.yaml` are written but have not been built or deployed. Docker is not installed in this sandbox.
+11. **Multi-day host is Render free tier.** https://skystunt-io.onrender.com runs the full game and server. Limits: free instance (0.1 CPU, 512 MB), sleeps after 15 min idle (mitigated by a 10-min self-ping, verified only for about 13 minutes so far), can restart at any time, rooms lost on restart, `MAX_ROOMS=4` chosen for the small instance (not load-tested). The static ship.place drop has no multiplayer.
+
+11a. **Old note (superseded):** the public ship.place link is static: offline solo only. The public ship.place link (`modest-shirt-zza26.ship.place`) is static: it runs offline solo only. It expires 2026-11-15 unless claimed. The full game with multiplayer is only at temporary links. **No durable public deployment with a server.** The only playable multiplayer links are temporary (Cloudflare Quick Tunnel, localhost.run). They last as long as this sandbox and its processes run. Tested and not playable: Serveo, localtunnel, Pinggy free, tunl.gg (see `HOSTING_SURVEY.md`). Northflank Sandbox is the recommended several-day option, but it needs an account and its free-service limits are unpublished.
+12. **Docker not verified.** The Dockerfile is not built here (no Docker). Render deploys from the repo with Node (no Docker).
+
+12a. **Proxy close code.** On Render, an oversized WebSocket frame ends in a 1006 abnormal close after a hang. On localhost the server sends 1009 as designed. The server stays up (`/healthz` 200). Likely the Render proxy does not forward the close frame. Not fixed.
 13. **Tested at 2 humans per room only.** Rooms of up to 8 humans are supported by design (`MAX_HUMANS_PER_ROOM = 8`) but were not tested.
 14. **No load or soak testing.** Concurrency limits (`MAX_ROOMS`, `MAX_CONNECTIONS`) are set but not stress-tested.
 15. **Reconnect tested within the grace window only.** Reconnect after a server restart is not supported: room state lives in memory.
