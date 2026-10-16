@@ -50,7 +50,8 @@ export class Room {
     m.car = msg.car;
     m.disconnectedAt = 0;
     m.gone = false;
-    if (this.phase === 'lobby' && this.lobbyEnd === 0) this.lobbyEnd = Date.now() + LOBBY_FILL_SECONDS * 1000;
+    // Public (Quick Play) lobbies start on a timer; private rooms wait for the host so friends can still join by code.
+    if (this.phase === 'lobby' && this.lobbyEnd === 0 && this.isPublic) this.lobbyEnd = Date.now() + LOBBY_FILL_SECONDS * 1000;
     this.lastEmptyAt = Date.now();
     this.log('join', this.code, msg.name, this.members.size);
     return { member: m };
@@ -155,7 +156,7 @@ export class Room {
     if (this.sim) this.sim.dispose();
     this.sim = null;
     this.phase = 'lobby';
-    this.lobbyEnd = this.members.size ? Date.now() + LOBBY_FILL_SECONDS * 1000 : 0;
+    this.lobbyEnd = this.members.size && this.isPublic ? Date.now() + LOBBY_FILL_SECONDS * 1000 : 0;
   }
 
   /** Called every server tick. */

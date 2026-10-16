@@ -53,8 +53,9 @@ export class CarPredictor {
   reconcile(serverCar, ack, I) {
     const before = this.position();
     const b = this.car.body;
-    const v = [serverCar[I.vx], serverCar[I.vy], serverCar[I.vz]];
-    const w = [serverCar[I.wx], serverCar[I.wy], serverCar[I.wz]];
+    // Missing velocity fields (older server build) fall back to 0 instead of writing NaN into the body.
+    const v = [serverCar[I.vx] ?? 0, serverCar[I.vy] ?? 0, serverCar[I.vz] ?? 0];
+    const w = [serverCar[I.wx] ?? 0, serverCar[I.wy] ?? 0, serverCar[I.wz] ?? 0];
     b.setTranslation({ x: serverCar[I.x], y: serverCar[I.y], z: serverCar[I.z] }, true);
     b.setRotation({ x: serverCar[I.qx], y: serverCar[I.qy], z: serverCar[I.qz], w: serverCar[I.qw] }, true);
     b.setLinvel({ x: v[0], y: v[1], z: v[2] }, true);
