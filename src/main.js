@@ -275,7 +275,7 @@ function startOnlineFlow(action, code) {
     onState: (m) => {
       if (!g.running || g.mode !== 'online' || g.trackId !== m.track && m.track) {
         if (!g.running || g.mode !== 'online') {
-          g.startOnline({ trackId: state.track, modeId: state.mode, meIdFn: () => g.meId });
+          g.startOnline({ trackId: state.track, modeId: state.mode, meIdFn: () => (state.net && state.net.token ? 'h' + state.net.token.slice(0, 8) : null) });
           g.sendNet = (o) => state.net && state.net.send(o);
           hide();
           state.screen = 'race';
