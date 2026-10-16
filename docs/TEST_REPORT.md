@@ -134,3 +134,30 @@ Target: https://skystunt-io.onrender.com (fresh GitHub clone at `263cbf8`; Rende
 | Keep-alive | Ping at start (200) and at +10 min (200). Uptime continuous (790 s at 07:55 UTC, no restart) |
 
 Not tested here: days-long uptime, restarts, sleep after 15 min without pings, load with 4 rooms, touch on a device.
+
+## Live matrix and bug pass (2026-10-16, after commit 66ec1d8)
+
+Target: https://skystunt-io.onrender.com (Render, build 66ec1d8, live 08:27 UTC).
+
+| Test | Result |
+|---|---|
+| Solo races, 12 runs covering all 4 tracks, all 3 modes and all 4 cars (`tests/browser/matrix.mjs`) | 12/12 pass. 0 console or page errors. 8 racers on the HUD each run. Peak speed 47 to 90 km/h |
+| Touch (390x844, touch emulation, 6 touch buttons) | Pass. Gas hold reaches 52 km/h |
+| Menus, How to play, settings persistence | Pass. Settings survive reload |
+| Camera views 1 to 7 (`tests/browser/cameras.mjs`, local build) | All 7 switch. 0 errors. Screenshots in `docs/test-screenshots/` |
+| Online Quick Play with bots, 2 humans in a private room | Pass. Standings show 8 entries for host and joiner after fix |
+| Online drive (`scratch/online-drive.mjs`) | Car moves: 9 to 65 km/h under gas |
+
+Bugs found and fixed in this pass:
+1. Nameplates filled the screen when a car passed the camera. Fixed: smaller sprites, hidden within 18 m.
+2. Camera had 3 modes and the cockpit view sat inside the car. Now 7 modes: Chase, Back view, Front view, Hood, Driver, First person, High. Keys C/V cycle, 1 to 7 select. In-cabin views hide the player's own car.
+3. Offline badge overlapped the standings panel. Moved.
+4. Online player id was circular (`meIdFn` read `g.meId`, which was never set), so online standings were empty. Fixed: id derived from the seat token.
+
+Open issues (not fixed):
+- Holding straight throttle from the grid leaves the road on Neon, Volcanic and Glacier within about 6 s (`scratch/fall-trace.mjs`). The track bends right after the start. There is no steering assist yet.
+- Invalid room code: the screen stays on "Connecting…" with Cancel. No "room not found" message was seen within 4 s (test of `ZZZZZZ`).
+- Online HUD timer stalled for about 20 s in one headless run, then jumped. Not diagnosed.
+- The private-room test's Start-now click timed out once in the full matrix, while a standalone run started the race fine. Cause not diagnosed.
+- Car models are box primitives. No public 3D car, track or environment assets have been added yet.
+- No Forza-Horizon-style palette, no Asphalt-style control scheme, no licensed model research yet.
