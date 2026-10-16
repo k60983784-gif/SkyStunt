@@ -108,7 +108,7 @@ export class Room {
   input(token, inp) {
     const m = this.members.get(token);
     if (!m || !this.sim || this.phase !== 'racing') return;
-    this.sim.setInput(m.id, { th: inp.th, br: inp.br, st: inp.st, hb: inp.hb, bo: inp.bo });
+    this.sim.setInput(m.id, { th: inp.th, br: inp.br, st: inp.st, hb: inp.hb, bo: inp.bo, s: inp.s });
   }
 
   forceStart(token) {

@@ -9,17 +9,21 @@ import { getTrack } from '../shared/tracks.js';
 import { CARS, CAR_IDS } from '../shared/cars.js';
 import { MAX_RACERS, MODES, PHYSICS_DT } from '../shared/constants.js';
 import { rot } from '../shared/sim.js';
+import { CarPredictor } from './predict.js';
+import { detectDevice } from './device.js';
 
-const INTERP_DELAY_MS = 110;
+const INTERP_DELAY_MS = 100;   // remote cars: about 3 snapshot intervals at 30 Hz
 const BOT_NAMES = ['Nova', 'Kestrel', 'Rook', 'Vega', 'Orbit', 'Zephyr', 'Ember', 'Cobalt', 'Lynx'];
 const CAR_TINTS = { bolt: 0xff3b6b, dart: 0x2bff9e, titan: 0xffc83b, viper: 0x3ba7ff };
 
 // snapshot car array indices (see shared/sim.js snapshot())
-const I = { id: 0, x: 1, y: 2, z: 3, qx: 4, qy: 5, qz: 6, qw: 7, speed: 8, wheel: 9, susp: 10, contacts: 11, place: 12, lap: 13, cp: 14, score: 15, boost: 16, alive: 17, finished: 18, lives: 19, boosting: 20, steer: 21, name: 22, carId: 23, bot: 24 };
+const I = { id: 0, x: 1, y: 2, z: 3, qx: 4, qy: 5, qz: 6, qw: 7, speed: 8, wheel: 9, susp: 10, contacts: 11, place: 12, lap: 13, cp: 14, score: 15, boost: 16, alive: 17, finished: 18, lives: 19, boosting: 20, steer: 21, name: 22, carId: 23, bot: 24,
+  vx: 25, vy: 26, vz: 27, wx: 28, wy: 29, wz: 30, ack: 31, freeze: 32 };
 
 export class Game {
   constructor({ canvas, hud, onFinish, onStatus, quality, sfx, onPause }) {
     this.canvas = canvas;
+    window.addEventListener('skystunt:device', () => this.syncTouchUI());
     this.hud = hud;               // element containing HUD pieces
     this.onFinish = onFinish;     // (results, info) => void
     this.onStatus = onStatus || (() => {});
@@ -95,6 +99,8 @@ export class Game {
     this.buildMinimap();
     this.controls = this.controls || new Controls(document.body);
     this.controls.onKey = (code) => this.handleKey(code);
+    this.controls.onCamera = (step) => this.cycleCamera(step);
+    document.body.classList.add('in-race');
     this.running = true;
     this.paused = false;
     this.lastT = performance.now();
@@ -103,6 +109,15 @@ export class Game {
     this.loop = this.loop || ((t) => this.frame(t));
     requestAnimationFrame(this.loop);
     this.setHudMode();
+    this.syncTouchUI();
+  }
+
+  /** Touch pedals and wheel show only on touch devices while racing. */
+  syncTouchUI() {
+    if (!this.controls) return;
+    if (this.running && detectDevice().touch) this.controls.enableTouch();
+    else this.controls.disableTouch();
+    this.controls && this.controls.setCameraLabel(this.camMode ?? 0, CAMERA_MODES.length);
   }
 
   handleKey(code) {
@@ -123,6 +138,7 @@ export class Game {
     this.camMode = i;
     if (this.world) { this.world.camMode = i; this.world.camModeChanged = true; }
     const m = CAMERA_MODES[i];
+    if (this.controls) this.controls.setCameraLabel(i, CAMERA_MODES.length);
     if (this.hud) { const tag = this.hud.querySelector('.camTag'); if (tag) tag.textContent = `CAM ${i + 1}/${CAMERA_MODES.length} · ${m.name}`; }
     this.toast(m.name, 'info');
   }
@@ -134,7 +150,9 @@ export class Game {
 
   stop() {
     this.running = false;
+    document.body.classList.remove('in-race');
     this.buffer = [];
+    this.dropPredictor();
     if (this.sim) { this.sim.dispose(); this.sim = null; }
     if (this.world) this.world.removeAllCars();
     this.hud.classList.remove('live');
@@ -221,7 +239,8 @@ export class Game {
     } else {
       frame = this.framesFromOnline(now);
       if (!this.meId && this.meIdFn && this.buffer.length) this.meId = this.meIdFn(this.buffer[this.buffer.length - 1].msg);
-      if (frame && this.controls) this.sendInputMaybe(now);
+      if (this.controls) this.updateOnlinePrediction(dt);
+      if (frame && this.predictor) this.applyPrediction(frame);
     }
     if (!frame) { this.render(dt); return; }
     this.lastFrame = frame;
@@ -230,12 +249,64 @@ export class Game {
     this.updateHud(frame);
   }
 
-  sendInputMaybe(now) {
-    if (!this.sendNet || now - (this.lastSend || 0) < 33) return;
-    this.lastSend = now;
-    this.inputSeq = (this.inputSeq || 0) + 1;
-    const inp = this.controls.read(0.033);
-    this.sendNet({ t: 'input', s: this.inputSeq, ...inp });
+  /**
+   * Local prediction for the player's car. Creates the predictor once per racing phase, rewinds it to each
+   * new snapshot (reconcile), steps it at 60 Hz with the current controls, and sends each step's input
+   * with a sequence number so the server can acknowledge it.
+   */
+  updateOnlinePrediction(dt) {
+    const last = this.buffer[this.buffer.length - 1];
+    if (!last || !this.meId) return;
+    const msg = last.msg;
+    if (msg.phase !== 'racing') { this.dropPredictor(); return; }
+    const mine = msg.cars.find((c) => c[I.id] === this.meId);
+    if (!mine) return;
+    if (!this.predictor) {
+      if (this.predictorBusy) return;
+      this.predictorBusy = true;
+      const meId = this.meId, carId = mine[I.carId];
+      initPhysics().then(() => {
+        this.predictorBusy = false;
+        if (this.mode !== 'online' || this.meId !== meId) return;
+        this.predictor = new CarPredictor({ trackId: this.trackId, modeId: this.modeId, carId, id: meId });
+        this.predAcc = 0;
+        this.lastRecAt = -1;
+      }).catch((e) => { this.predictorBusy = false; console.warn('prediction disabled:', e.message); });
+      return;
+    }
+    if (this.lastRecAt !== last.at) {
+      this.lastRecAt = last.at;
+      this.predictor.reconcile(mine, mine[I.ack], I);
+    }
+    this.predAcc = (this.predAcc || 0) + dt;
+    let steps = 0;
+    while (this.predAcc >= PHYSICS_DT && steps < 8) {
+      const inp = this.controls.read(PHYSICS_DT);
+      const s = this.predictor.step(inp);
+      if (this.sendNet) this.sendNet({ t: 'input', s, th: inp.th, br: inp.br, st: inp.st, hb: inp.hb, bo: inp.bo });
+      this.predAcc -= PHYSICS_DT;
+      steps += 1;
+    }
+    if (this.predAcc > PHYSICS_DT) this.predAcc = 0;
+    this.predictor.decay(dt);
+  }
+
+  /** Replaces the local player's car pose in the frame with the predicted pose. */
+  applyPrediction(frame) {
+    const pose = this.predictor.pose();
+    const i = frame.cars.findIndex((c) => c[I.id] === this.meId);
+    if (i < 0) return;
+    const c = frame.cars[i].slice();
+    c[I.x] = pose.x; c[I.y] = pose.y; c[I.z] = pose.z;
+    c[I.qx] = pose.qx; c[I.qy] = pose.qy; c[I.qz] = pose.qz; c[I.qw] = pose.qw;
+    c[I.speed] = pose.speed; c[I.steer] = pose.steer;
+    frame.cars[i] = c;
+  }
+
+  dropPredictor() {
+    if (this.predictor) { this.predictor.dispose(); this.predictor = null; }
+    this.predAcc = 0;
+    this.lastRecAt = -1;
   }
 
   processEvents() {
@@ -351,7 +422,6 @@ export class Game {
     el.querySelector('.statusTag').textContent = this.mode === 'offline' ? 'OFFLINE MODE — solo vs AI (no server)' : 'ONLINE RACE';
     el.querySelector('.statusTag').classList.toggle('off', this.mode === 'offline');
     el.querySelector('.lapsTotal').textContent = getTrack(this.trackId).laps;
-    if (this.controls && window.matchMedia('(pointer: coarse)').matches) this.controls.enableTouch();
   }
 
   updateHud(frame) {

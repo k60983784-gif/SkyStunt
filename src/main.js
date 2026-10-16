@@ -15,9 +15,11 @@ const hud = $('#hud');
 const canvas = $('#scene');
 
 // ---------- persisted settings ----------
+import { watchDevice, detectDevice, getInputOverride, setInputOverride } from './device.js';
+
 const SETTINGS_KEY = 'skystunt.settings';
 const settings = Object.assign(
-  { volume: 0.6, sfx: true, quality: window.matchMedia('(max-width: 760px)').matches ? 'low' : 'high', camera: 0, name: '' },
+  { volume: 0.6, sfx: true, quality: detectDevice().kind === 'desktop' ? 'high' : 'low', camera: 0, name: '' },
   JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')
 );
 const saveSettings = () => localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -168,6 +170,10 @@ function renderSettings(back) {
       </div>
       <p class="sub" style="font-size:12px;margin-top:8px">Low lowers the pixel ratio, antialiasing and scenery density. Applies to the next race.</p>
     </div>
+    <div class="section"><h4>Controls</h4>
+      <div class="row" style="flex-wrap:wrap">${['auto', 'touch', 'keyboard'].map((v) => `<button class="btn ${getInputOverride() === v ? 'cyan' : 'alt'}" data-input="${v}">${{ auto: 'Auto-detect', touch: 'Touch', keyboard: 'Keyboard' }[v]}</button>`).join('')}</div>
+      <p class="sub" style="font-size:12px;margin-top:8px">Auto uses the device pointer and screen. Detected now: ${detectDevice().touch ? 'touch' : 'keyboard'}, ${detectDevice().kind}, ${detectDevice().portrait ? 'portrait' : 'landscape'}.</p>
+    </div>
     <div class="section"><h4>Camera</h4>
       <div class="row" style="flex-wrap:wrap">${CAMERA_MODES.map((m, i) => `<button class="btn ${settings.camera === i ? 'cyan' : 'alt'}" data-cam="${i}">${m.name}</button>`).join('')}</div>
     </div>
@@ -179,6 +185,7 @@ function renderSettings(back) {
   $('#vol').oninput = (e) => { settings.volume = Number(e.target.value); sfx.setVolume(settings.volume); saveSettings(); };
   $('#sfxOn').onchange = (e) => { settings.sfx = e.target.checked; sfx.setEnabled(settings.sfx); saveSettings(); };
   screenEl.querySelectorAll('[data-q]').forEach((b) => b.onclick = () => { settings.quality = b.dataset.q; saveSettings(); renderSettings(back); });
+  screenEl.querySelectorAll('[data-input]').forEach((b) => b.onclick = () => { setInputOverride(b.dataset.input); renderSettings(back); });
   screenEl.querySelectorAll('[data-cam]').forEach((b) => b.onclick = () => { settings.camera = Number(b.dataset.cam); saveSettings(); renderSettings(back); });
   $('#pname').onchange = (e) => { settings.name = e.target.value.trim().slice(0, 16); saveSettings(); };
   $('#bDone').onclick = () => { if ($('#pname')) { settings.name = $('#pname').value.trim().slice(0, 16); saveSettings(); } back(); };
@@ -427,6 +434,9 @@ function showResults(results, info) {
 
 // ---------- routing ----------
 const params = new URLSearchParams(location.search);
+watchDevice();
+// Test hook: read-only access to the running game for browser tests (tests/browser/mobile-ui.mjs).
+window.skystunt = { get game() { return game; }, get state() { return state; } };
 renderTitle();
 if (params.get('room')) {
   const code = params.get('room').toUpperCase().slice(0, 6);

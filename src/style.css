@@ -126,3 +126,46 @@ table.results tr.me td { color:var(--gold); font-weight:800; }
 .kbd { display:inline-block; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12px; background:rgba(255,255,255,.06); }
 .two { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 @media (max-width: 640px) { .two { grid-template-columns:1fr; } .card { padding:18px; } .keys { display:none; } }
+
+/* ---------- adaptive layout: body classes from src/device.js (is-touch / is-keyboard, is-phone / is-tablet / is-desktop, portrait / landscape) ---------- */
+body { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+.touch { position:fixed; inset:0; display:flex; justify-content:space-between; align-items:flex-end; pointer-events:none; touch-action:none; user-select:none; -webkit-user-select:none; z-index:5;
+  padding: 10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.tleft { display:flex; flex-direction:column; align-items:center; gap:10px; pointer-events:auto; }
+.wheel { width:clamp(104px, 24vmin, 156px); height:clamp(104px, 24vmin, 156px); border-radius:50%; display:grid; place-items:center; color:#FBD5E9; touch-action:none;
+  background: radial-gradient(circle at 35% 30%, rgba(251,213,233,.28), rgba(35,31,32,.88) 70%); border:3px solid rgba(251,213,233,.55); box-shadow:0 8px 22px rgba(0,0,0,.45); transition: transform .2s ease-out; }
+.wheel.turning { transition:none; }
+.wheel svg { width:74%; height:74%; }
+.tcam { display:flex; gap:8px; }
+.tcamBtn { pointer-events:auto; width:46px; height:40px; border-radius:12px; border:1px solid rgba(251,213,233,.35); background:rgba(35,31,32,.82); color:#FBD5E9; display:grid; place-items:center; position:relative; touch-action:none; padding:0; }
+.tcamBtn.cur { width:58px; }
+.tcamBtn svg { width:22px; height:22px; }
+.tcamNum { position:absolute; right:4px; bottom:2px; font-size:10px; font-weight:900; color:#fff; line-height:1; }
+.tright { display:flex; flex-direction:column; align-items:flex-end; gap:12px; pointer-events:auto; }
+.tmid, .tbig { display:flex; gap:12px; }
+.tbtn { pointer-events:auto; border-radius:999px; border:2px solid rgba(251,213,233,.45); background:rgba(35,31,32,.8); color:#FBD5E9; display:grid; place-items:center; touch-action:none; padding:0; min-width:0; min-height:0; font-size:0; transition: transform .06s ease-out, filter .08s; }
+.tbtn svg { width:46%; height:46%; }
+.tbtn.drift, .tbtn.boost { width:76px; height:76px; }
+.tbig .tbtn { width:112px; height:112px; }
+.tbtn.gas { background:linear-gradient(160deg,#EA0C80,#871254); border-color:#FBD5E9; color:#fff; }
+.tbtn.brake { background:linear-gradient(160deg,#817E7F,#231F20); color:#FBD5E9; }
+.tbtn.boost { background:linear-gradient(160deg,#FBD5E9,#EA0C80); border-color:#FBD5E9; color:#231F20; }
+.tbtn.drift { background:rgba(135,18,84,.9); color:#FBD5E9; }
+.tbtn.on, .tbtn:active { transform:scale(.94); filter:brightness(1.3); }
+.tbtn.on { box-shadow:0 0 0 4px rgba(251,213,233,.35); }
+.is-keyboard .touch { display:none; }
+.is-touch .keys { display:none; }
+.is-touch .hudBottom { left:50%; right:auto; transform:translateX(-50%); bottom:12px; width:max-content; gap:10px; }
+.is-touch .pauseBtn { top:50px; }
+.is-touch .btn { min-height:52px; min-width:120px; font-size:16px; }
+.is-touch .card { max-width:min(560px, 94vw); max-height:92vh; overflow:auto; }
+.is-phone .hudLeft { transform:scale(.8); transform-origin:top left; }
+.is-phone .hudRight { transform:scale(.8); transform-origin:top right; }
+.is-phone .topbar { transform:translateX(-50%) scale(.85); }
+.rotateHint { display:none; position:fixed; inset:0; z-index:60; background:#231F20; color:#FBD5E9; align-items:center; justify-content:center; flex-direction:column; gap:14px; text-align:center; font-weight:800; font-size:18px; }
+.rotateHint svg { animation: rot 1.6s ease-in-out infinite alternate; }
+@keyframes rot { from { transform:rotate(0deg); } to { transform:rotate(-90deg); } }
+body.is-phone.is-portrait.in-race .rotateHint { display:flex; }
+/* Phone landscape during a race: the standings list would sit under the pedals (P-position is already shown top-left). */
+.is-phone.in-race .standings { display:none; }
+.is-touch.in-race #badge { display:none; }

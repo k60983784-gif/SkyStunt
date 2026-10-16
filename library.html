@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SkyStunt.io — 3D model library</title>
+<style>
+  :root { --magenta:#EA0C80; --ink:#231F20; --blush:#FBD5E9; --plum:#871254; --grey:#817E7F; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--ink); color:#fff; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid rgba(251,213,233,.2); }
+  header h1 { font-size:18px; margin:0 12px 0 0; color:var(--blush); }
+  input, select { background:rgba(35,31,32,.9); color:#fff; border:1px solid rgba(251,213,233,.35); border-radius:10px; padding:8px 10px; font:inherit; min-height:40px; }
+  .count { color:var(--grey); font-size:13px; }
+  main { display:grid; grid-template-columns: minmax(260px, 380px) 1fr; height: calc(100% - 66px); }
+  #list { overflow:auto; border-right:1px solid rgba(251,213,233,.2); }
+  .item { padding:10px 14px; border-bottom:1px solid rgba(251,213,233,.08); cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
+  .item:hover, .item.on { background:rgba(234,12,128,.22); }
+  .item small { color:var(--grey); }
+  #view { position:relative; }
+  canvas { width:100%; height:100%; display:block; }
+  #info { position:absolute; left:12px; bottom:12px; background:rgba(35,31,32,.9); border:1px solid rgba(251,213,233,.25); border-radius:12px; padding:10px 12px; font-size:13px; max-width:520px; line-height:1.45; }
+  #info a { color:var(--blush); }
+  #status { position:absolute; right:12px; top:12px; color:var(--blush); font-size:13px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; } #list { border-right:0; border-bottom:1px solid rgba(251,213,233,.2); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>3D model library</h1>
+  <input id="q" type="search" placeholder="Search name" aria-label="Search models" />
+  <select id="pack" aria-label="Pack filter"><option value="">All packs</option></select>
+  <span class="count" id="count"></span>
+</header>
+<main>
+  <div id="list" role="listbox" aria-label="Models"></div>
+  <div id="view">
+    <canvas id="c" aria-label="Selected model"></canvas>
+    <div id="status"></div>
+    <div id="info">Pick a model on the left. Drag to orbit.</div>
+  </div>
+</main>
+<script type="module" src="/src/library.js"></script>
+</body>
+</html>

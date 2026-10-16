@@ -659,7 +659,7 @@ export class Sim {
       raceTime: this.raceTime,
       countdown: this.countdown,
       cars: this.cars.map((c) => {
-        const p = c.body.translation(), r = c.body.rotation(), v = c.body.linvel();
+        const p = c.body.translation(), r = c.body.rotation(), v = c.body.linvel(), av = c.body.angvel();
         return [
           c.id,
           round3(p.x), round3(p.y), round3(p.z),
@@ -681,6 +681,9 @@ export class Sim {
           c.name,
           c.carId,
           c.bot ? 1 : 0,
+          round3(v.x), round3(v.y), round3(v.z), round3(av.x), round3(av.y), round3(av.z),
+          c.input && c.input.s ? c.input.s : 0,
+          c.freezeT > 0 ? 1 : 0,
         ];
       }),
       hazards: this.hazardBodies.map((h) => {

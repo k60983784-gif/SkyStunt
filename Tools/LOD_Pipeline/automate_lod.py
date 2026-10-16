@@ -9,6 +9,8 @@ Modes
                                gltf-transform (npm: @gltf-transform/cli), write <name>_lod1.glb, <name>_lod2.glb, and
                                print real triangle counts read from the output files.
   --report                     Print triangle and size table for every .glb without writing.
+  --manifest                   Write public/models/library/manifest.json (pack, licence, source page, triangles, bytes)
+                               for every model in public/models/library. Run after adding models.
 
 Requires Node tooling (npx gltf-transform) only for --build. --check and --report use the Python standard library.
 """
@@ -24,6 +26,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "public" / "models"
 CLI = ROOT / "node_modules" / ".bin" / "gltf-transform"
+LIBRARY = MODELS / "library"
+
+# Pack metadata. Source pages were fetched in this session (see docs/ASSET_SOURCES.md).
+PACKS = {
+    "kenney-car-kit": {"title": "Kenney Car Kit 3.1", "source": "https://kenney.nl/assets/car-kit", "license": "CC0 1.0", "expect_license": "Creative Commons Zero"},
+    "kenney-racing-kit": {"title": "Kenney Racing Kit", "source": "https://kenney.nl/assets/racing-kit", "license": "CC0 1.0", "expect_license": "Creative Commons Zero"},
+    "kenney-nature-kit": {"title": "Kenney Nature Kit", "source": "https://kenney.nl/assets/nature-kit", "license": "CC0 1.0", "expect_license": "Creative Commons Zero"},
+}
 
 
 def read_glb_json(path: Path):
@@ -110,18 +120,50 @@ def build(ratios):
     return 0
 
 
+def build_manifest() -> int:
+    entries = []
+    for pack_dir in sorted(p for p in LIBRARY.iterdir() if p.is_dir()):
+        meta = PACKS.get(pack_dir.name)
+        if meta is None:
+            sys.exit(f"no PACKS entry for {pack_dir.name}; add its source and licence first")
+        lic_text = (pack_dir / "License.txt").read_text(encoding="utf-8", errors="replace")
+        if meta["expect_license"] not in lic_text:
+            sys.exit(f"{pack_dir.name}/License.txt does not contain '{meta['expect_license']}'")
+        for glb in sorted(pack_dir.glob("*.glb")):
+            doc = read_glb_json(glb)
+            entries.append({
+                "id": f"{pack_dir.name}/{glb.stem}",
+                "name": glb.stem,
+                "file": f"/models/library/{pack_dir.name}/{glb.name}",
+                "pack": pack_dir.name,
+                "packTitle": meta["title"],
+                "licence": meta["license"],
+                "licenceFile": f"/models/library/{pack_dir.name}/License.txt",
+                "source": meta["source"],
+                "triangles": triangle_count(doc),
+                "bytes": glb.stat().st_size,
+            })
+    out = LIBRARY / "manifest.json"
+    out.write_text(json.dumps({"count": len(entries), "models": entries}, indent=1), encoding="utf-8")
+    print(f"wrote {out.relative_to(ROOT)}: {len(entries)} models")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--check", action="store_true")
     g.add_argument("--build", action="store_true")
     g.add_argument("--report", action="store_true")
+    g.add_argument("--manifest", action="store_true")
     ap.add_argument("--ratios", default="0.5,0.2", help="comma-separated simplify ratios for --build")
     a = ap.parse_args()
     if a.check:
         return check_models()
     if a.report:
         return report()
+    if a.manifest:
+        return build_manifest()
     ratios = [float(x) for x in a.ratios.split(",") if x.strip()]
     return build(ratios)
 

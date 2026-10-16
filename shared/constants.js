@@ -1,7 +1,7 @@
 // Shared simulation constants. Client and server MUST use the same values.
 export const PHYSICS_HZ = 60;           // fixed simulation step (server authoritative)
 export const PHYSICS_DT = 1 / PHYSICS_HZ;
-export const SNAPSHOT_HZ = 20;          // server -> client state broadcast rate
+export const SNAPSHOT_HZ = 30;          // server -> client state broadcast rate
 export const SAMPLE_SPACING = 2.0;      // metres between track samples
 export const TRACK_THICKNESS = 0.6;     // metres
 export const MAX_RACERS = 8;            // total competitors per race (humans + bots)
