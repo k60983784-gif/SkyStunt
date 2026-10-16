@@ -180,7 +180,14 @@ Known from earlier runs (same test, earlier builds):
 
 ## Session 2026-10-16 (this turn): models, steering assist, Quick Play late join, palette, pipeline
 
-Local build only (`http://localhost:8080`). **Not deployed.** The live Render build is still `6c0b00f` until a redeploy is done with a fresh token.
+Deployed: commit `c558643` pushed to `main` and deployed to Render (deploy `dep-db97a3vbtjjs73bbkqkg`, status `live`). Live URL: https://skystunt-io.onrender.com. The docs-only commit after it is local and not pushed (the GitHub token was used once).
+
+Live results (`c558643`, Render):
+- `tests/browser/smoke.mjs`: 0 console errors, WebGL2 true.
+- `CARS=bolt tests/browser/car-models.mjs`: 0 console errors. Chase view shows the textured Kenney model.
+- `tests/multiplayer.test.mjs`: 20/21. Failed: "oversized payload closes that socket only" (close code not 1009; same as before). The throttle check was 13.9 m in one run and 26.0 m in the next. Treated as timing variance on the free tier, not a regression.
+- `tests/late-join.test.mjs` over WSS: PASS.
+- Localhost `tests/multiplayer.test.mjs`: 21/21.
 
 | Check | Command | Result |
 |---|---|---|
