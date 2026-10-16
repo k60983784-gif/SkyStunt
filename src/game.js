@@ -1,7 +1,7 @@
 // Race runtime: feeds snapshots (online: interpolated network states; offline: local simulation)
 // into the renderer, HUD, effects and audio. Same code path for both modes.
 import * as THREE from 'three';
-import { World, setLabel } from './render.js';
+import { World, setLabel, CAMERA_MODES } from './render.js';
 import { Controls } from './controls.js';
 import { Sfx } from './audio.js';
 import { initPhysics, Sim } from '../shared/sim.js';
@@ -106,16 +106,25 @@ export class Game {
   }
 
   handleKey(code) {
-    if (code === 'KeyC') this.cycleCamera();
+    if (code === 'KeyC') this.cycleCamera(1);
+    if (code === 'KeyV') this.cycleCamera(-1);
+    const digit = /^Digit([1-7])$/.exec(code);
+    if (digit) this.setCamera(Number(digit[1]) - 1);
     if (code === 'KeyP' || code === 'Escape') this.onPause(!this.paused);
     if (code === 'KeyM') this.onStatus('mute', '');
   }
 
-  cycleCamera() {
-    this.camMode = ((this.camMode ?? 0) + 1) % 3;
-    if (this.world) this.world.camMode = this.camMode;
-    const names = ['Chase camera', 'Cockpit camera', 'High camera'];
-    this.toast(names[this.camMode], 'info');
+  cycleCamera(step = 1) {
+    const n = CAMERA_MODES.length;
+    this.setCamera((((this.camMode ?? 0) + step) % n + n) % n);
+  }
+
+  setCamera(i) {
+    this.camMode = i;
+    if (this.world) { this.world.camMode = i; this.world.camModeChanged = true; }
+    const m = CAMERA_MODES[i];
+    if (this.hud) { const tag = this.hud.querySelector('.camTag'); if (tag) tag.textContent = `CAM ${i + 1}/${CAMERA_MODES.length} · ${m.name}`; }
+    this.toast(m.name, 'info');
   }
 
   setPaused(p) {
@@ -282,8 +291,8 @@ export class Game {
       const isMe = id === this.meId;
       const label = (arr[I.name] || 'Racer') + (isMe ? ' ★' : '');
       setLabel(car.label, label, isMe ? '#ffe36b' : '#ffffff');
-      car.label.sprite.visible = !isMe;
-      if (!arr[I.alive]) car.car.visible = false; else car.car.visible = true;
+      car.label.isMe = isMe;
+      car.car.visible = !!arr[I.alive] && !(isMe && w.hideOwn);
       // effects
       const prev = this.prevZ.get(id);
       const pos = car.car.position;

@@ -216,6 +216,18 @@ export function buildCarMesh(carId, color) {
 }
 
 // ---------- particles ----------
+// Camera modes. back: metres behind the car (negative = in front); up: metres above the car centre;
+// ahead: look-at point metres ahead of the car; lookUp: look-at height; hideOwn: hide the player's car (in-cabin views).
+export const CAMERA_MODES = [
+  { id: 'chase',  name: 'Chase',        back: 9,   up: 3.2, ahead: 0,  lookUp: 1.2, fov: 65, speedBack: true, hideOwn: false },
+  { id: 'bumper', name: 'Back view',    back: 4.5, up: 0.9, ahead: 0,  lookUp: 0.8, fov: 70, hideOwn: false },
+  { id: 'front',  name: 'Front view',   back: -11, up: 2.4, ahead: 0,  lookUp: 1.0, fov: 60, hideOwn: false },
+  { id: 'hood',   name: 'Hood',         back: -0.6, up: 1.25, ahead: 14, lookUp: 0.6, fov: 72, snap: true, hideOwn: true },
+  { id: 'driver', name: 'Driver',       back: 0.35, up: 0.95, ahead: 14, lookUp: 0.5, fov: 70, snap: true, hideOwn: true },
+  { id: 'fpv',    name: 'First person', back: 0.0, up: 1.35, ahead: 18, lookUp: 1.1, fov: 84, snap: true, hideOwn: true },
+  { id: 'drone',  name: 'High',         back: 18,  up: 9,   ahead: 0,  lookUp: 0,   fov: 60, hideOwn: false },
+];
+
 export class Particles {
   constructor(scene, max = 700) {
     this.max = max;
@@ -349,7 +361,6 @@ export class World {
       w.pivot.rotation.set(0, 0, 0);
       if (w.front) w.pivot.rotation.y = pose.steer * 0.75;
     }
-    c.label.sprite.visible = !highlight;
     return c;
   }
 
@@ -362,25 +373,31 @@ export class World {
     this.renderer.render(this.scene, this.camera);
   }
 
-  /** Smooth follow camera for a focus pose. mode 0 chase, 1 cockpit, 2 high */
+  /** Follow camera for a focus pose, using CAMERA_MODES[camMode]. */
   followCamera(focus, dt, speed) {
     if (!focus) return;
+    const m = CAMERA_MODES[this.camMode] || CAMERA_MODES[0];
     const up = new THREE.Vector3(0, 1, 0);
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(focus.q);
-    let back, height, look;
-    if (this.camMode === 0) { back = 9 + Math.min(4, speed / 25); height = 3.2; look = 1.2; }
-    else if (this.camMode === 1) { back = -0.6; height = 1.2; look = 2.5; }
-    else { back = 18; height = 9; look = 0; }
-    const target = new THREE.Vector3(focus.x, focus.y, focus.z).addScaledVector(fwd, -back).addScaledVector(up, height);
-    const k = 1 - Math.pow(0.0008, dt);
-    this.camPos.lerp(target, this.camMode === 1 ? 1 : k);
+    const base = new THREE.Vector3(focus.x, focus.y, focus.z);
+    const back = m.back + (m.speedBack ? Math.min(4, speed / 25) : 0);
+    const target = base.clone().addScaledVector(fwd, -back).addScaledVector(up, m.up);
+    const lookAt = base.clone().addScaledVector(fwd, m.ahead).addScaledVector(up, m.lookUp);
+    if (this.camModeChanged || !this.camInit) { this.camPos.copy(target); this.camLook.copy(lookAt); this.camModeChanged = false; this.camInit = true; }
+    const k = m.snap ? 1 : 1 - Math.pow(0.0008, dt);
+    this.camPos.lerp(target, k);
+    this.camLook.lerp(lookAt, k);
     this.camera.position.copy(this.camPos);
     if (this.shake > 0) { this.camera.position.x += (Math.random() - 0.5) * this.shake; this.camera.position.y += (Math.random() - 0.5) * this.shake; this.shake = Math.max(0, this.shake - dt * 3); }
-    const lookAt = new THREE.Vector3(focus.x, focus.y, focus.z).addScaledVector(up, look);
-    this.camLook.lerp(lookAt, this.camMode === 1 ? 1 : k);
     this.camera.lookAt(this.camLook);
-    this.camera.fov = 65 + Math.min(18, Math.max(0, (speed - 20) * 0.35));
+    this.camera.fov = m.fov + Math.min(18, Math.max(0, (speed - 20) * 0.35));
     this.camera.updateProjectionMatrix();
+    this.hideOwn = !!m.hideOwn;
+    // nameplates: hide when the camera is too close, so they never fill the screen
+    for (const c of this.cars.values()) {
+      if (c.label.isMe) { c.label.sprite.visible = false; continue; }
+      c.label.sprite.visible = this.camera.position.distanceTo(c.car.position) > 18;
+    }
   }
 }
 
@@ -390,7 +407,7 @@ function makeLabel() {
   const ctx = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-  sprite.scale.set(4.2, 1.05, 1);
+  sprite.scale.set(2.6, 0.65, 1);
   sprite.position.set(0, 2.6, 0);
   sprite.renderOrder = 10;
   return { sprite, cv, ctx, tex, last: '' };

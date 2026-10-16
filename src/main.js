@@ -6,6 +6,7 @@ import { Sfx } from './audio.js';
 import { CARS, CAR_IDS } from '../shared/cars.js';
 import { TRACKS, TRACK_IDS } from '../shared/tracks.js';
 import { MODES } from '../shared/constants.js';
+import { CAMERA_MODES } from './render.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const screenEl = $('#screen');
@@ -139,7 +140,7 @@ function renderHow() {
       <div class="section"><h4>Keyboard</h4>
         <p><span class="kbd">W</span>/<span class="kbd">↑</span> gas &nbsp; <span class="kbd">S</span>/<span class="kbd">↓</span> brake or reverse</p>
         <p><span class="kbd">A</span>/<span class="kbd">D</span> steer &nbsp; <span class="kbd">Space</span> handbrake (drift)</p>
-        <p><span class="kbd">Shift</span> or <span class="kbd">E</span> boost (uses the boost bar) &nbsp; <span class="kbd">C</span> camera &nbsp; <span class="kbd">P</span> pause</p>
+        <p><span class="kbd">Shift</span> or <span class="kbd">E</span> boost (uses the boost bar) &nbsp; <span class="kbd">C</span>/<span class="kbd">V</span> cycle camera &nbsp; <span class="kbd">1</span>–<span class="kbd">7</span> pick view &nbsp; <span class="kbd">P</span> pause</p>
       </div>
       <div class="section"><h4>Touch</h4><p>Left side: steer. Right side: brake, drift, boost and gas.</p></div>
     </div>
@@ -168,7 +169,7 @@ function renderSettings(back) {
       <p class="sub" style="font-size:12px;margin-top:8px">Low lowers the pixel ratio, antialiasing and scenery density. Applies to the next race.</p>
     </div>
     <div class="section"><h4>Camera</h4>
-      <div class="row">${['Chase', 'Cockpit', 'High'].map((n, i) => `<button class="btn ${settings.camera === i ? 'cyan' : 'alt'}" data-cam="${i}">${n}</button>`).join('')}</div>
+      <div class="row" style="flex-wrap:wrap">${CAMERA_MODES.map((m, i) => `<button class="btn ${settings.camera === i ? 'cyan' : 'alt'}" data-cam="${i}">${m.name}</button>`).join('')}</div>
     </div>
     <div class="section"><h4>Player name</h4>
       <input type="text" id="pname" maxlength="16" value="${escapeHtml(settings.name)}" placeholder="Racer" />
