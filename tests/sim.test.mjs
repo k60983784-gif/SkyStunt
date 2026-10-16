@@ -62,7 +62,6 @@ const yawRate = (c) => c.body.angvel().y;
   while (car.lapsDone < 1 && t < 60 * 200) { sim.step(); t++; }
   check('AI bot completes one lap on Canyon Skyway (single bot, no traffic)', car.lapsDone >= 1, `laps=${car.lapsDone} time=${sim.raceTime.toFixed(0)}s respawns=${car.respawns}`);
 }
-const pass = results.filter(Boolean).length;
 { // steering assist: human car with no steer input sheds sideways slip; bots never use it
   const { sim, car } = flatSim();
   for (let i = 0; i < 120; i++) { car.input = { th: 1, br: 0, st: 0, hb: 0, bo: 0 }; sim.step(); }
@@ -83,5 +82,6 @@ const pass = results.filter(Boolean).length;
   for (let i = 0; i < 120; i++) { s2.step(); if (bot.assistOn) assistEverOn = true; }
   check('steering assist is off for bots', assistEverOn === false);
 }
+const pass = results.filter(Boolean).length;
 console.log(`\n${pass}/${results.length} checks passed`);
 process.exit(pass === results.length ? 0 : 1);
