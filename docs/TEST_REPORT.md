@@ -177,3 +177,36 @@ Open issues (not fixed):
 Known from earlier runs (same test, earlier builds):
 - The Quick Play check failed once. A protocol test (`scratch/quick-gap.mjs`) confirmed the cause: after the 12 s lobby window, a second Quick Play player gets a new room, because a race in progress is not joinable. This is a design gap, not fixed.
 - The full-room check once showed the host with 1 player; it showed 8 on the passing run. Not diagnosed.
+
+## Session 2026-10-16 (this turn): models, steering assist, Quick Play late join, palette, pipeline
+
+Local build only (`http://localhost:8080`). **Not deployed.** The live Render build is still `6c0b00f` until a redeploy is done with a fresh token.
+
+| Check | Command | Result |
+|---|---|---|
+| Sim unit tests | `node tests/sim.test.mjs` | 9/10 (new assist checks pass). Known failure: Canyon lone-bot lap, 0 laps in 197 s |
+| Steering assist: lateral slip, human | in `sim.test.mjs` | Lateral 4.00 → 0.02 m/s in 0.67 s with no steer input. PASS |
+| Steering assist: bots excluded | in `sim.test.mjs` | `assistOn` never true for a bot. PASS |
+| Multiplayer protocol | `node tests/multiplayer.test.mjs http://localhost:8080` | 21/21 PASS |
+| Quick Play, 14 s gap | `scratch/quick-gap.mjs` | Same room `CZKQL` for both players (was two rooms before this change) |
+| Quick Play late join into a race | `tests/late-join.test.mjs` | PASS. Joiner's car is a human car in the racing state; bots drop from 4 to 2 |
+| Car models in chase and front views | `CARS=bolt,viper node tests/browser/car-models.mjs` | 0 console errors / warnings (after removing deprecated `THREE.Clock`) |
+| Camera views (7) | `tests/browser/cameras.mjs` | 7 views switch, 0 console errors |
+| Smoke | `tests/browser/smoke.mjs` | PASS, 0 errors |
+| Asset check | `python3 Tools/LOD_Pipeline/automate_lod.py --check` | 4 models, 0 problems |
+| LOD build | `automate_lod.py --build --ratios 0.5,0.2` | Triangle counts in docs/RENDER_PIPELINE.md |
+
+Bugs fixed this turn:
+- Kenney GLBs reference `Textures/colormap.png` as an external file. It was missing and was copied in. Without it the models would fail to texture.
+- Car paint shimmered at distance. Fixed with mipmapped flake normal map and lower normal strength.
+- Deprecated `THREE.Clock` warning (unused variable) removed. It counted as a console warning.
+
+Not tested this turn:
+- The full 12-combination solo matrix and the online matrix were not rerun after these changes.
+- Joiner matrix (`tests/browser/joiners.mjs`) not rerun on the new code.
+- Real GPU rendering, mobile touch, and multi-day uptime are not measured.
+- The browser screen a joiner sees when joining mid-race was not tested. The protocol test covers the server side only.
+- The steering assist has not been playtested by a human. The assist effect is measured in the sim only.
+- The CI workflow has not run on GitHub Actions.
+
+Known limitations of the late-join rule: the joiner takes the AI car furthest back on the grid that has not finished. The joiner keeps that car's body and race progress but not its model, since the car id stays with the seat. Race positions are not recalculated for the joiner beyond what the sim already tracks.

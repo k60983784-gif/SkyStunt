@@ -91,11 +91,13 @@ function newCode() {
 }
 
 function quickPlay(msg) {
+  // Prefer a lobby (no seat cost). Otherwise a racing public room that still has an AI seat to take over.
   let best = null;
   for (const r of rooms.values()) {
-    if (!r.isPublic || r.phase !== 'lobby' || r.mode !== msg.mode) continue;
+    if (!r.isPublic || r.mode !== msg.mode) continue;
     if (r.members.size >= MAX_HUMANS_PER_ROOM) continue;
-    if (!best || r.members.size > best.members.size) best = r;
+    if (r.phase === 'lobby') { if (!best || best.phase !== 'lobby' || r.members.size > best.members.size) best = r; }
+    else if (r.phase === 'racing' && r.pickBotSeat()) { if (!best) best = r; }
   }
   if (best) return best;
   if (rooms.size >= MAX_ROOMS) return null;

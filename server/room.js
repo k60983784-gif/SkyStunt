@@ -32,12 +32,18 @@ export class Room {
 
   /** Token-based membership: a player rejoining with their token reclaims the seat. */
   join(ws, msg, token) {
-    if (this.phase === 'racing' && this.members.size >= MAX_HUMANS_PER_ROOM) return { error: 'Room is full' };
-    if (this.members.size >= MAX_HUMANS_PER_ROOM) return { error: 'Room is full' };
+    if (this.members.size >= MAX_HUMANS_PER_ROOM && !this.members.has(token)) return { error: 'Room is full' };
     let m = this.members.get(token);
+    let seat = null;
+    if (!m && this.phase === 'racing') {
+      // Late join: a new human takes over an unfinished AI car (see takeOverBot).
+      seat = this.pickBotSeat();
+      if (!seat) return { error: 'Race in progress. No AI seat is free.' };
+    }
     if (!m) {
       m = { token, id: 'h' + token.slice(0, 8), name: msg.name, car: msg.car, ws: null, disconnectedAt: 0 };
       this.members.set(token, m);
+      if (seat) this.takeOverBot(seat, m);
     }
     m.ws = ws;
     m.name = msg.name;
@@ -48,6 +54,27 @@ export class Room {
     this.lastEmptyAt = Date.now();
     this.log('join', this.code, msg.name, this.members.size);
     return { member: m };
+  }
+
+  /** Unfinished AI car to hand to a late joiner: the one furthest back on the grid. Null if none. */
+  pickBotSeat() {
+    if (!this.sim || this.sim.phase !== 'racing') return null;
+    const bots = this.sim.cars.filter((c) => c.bot && !c.finished);
+    if (!bots.length) return null;
+    bots.sort((a, b) => b.grid - a.grid);
+    return bots[0];
+  }
+
+  /** Hands an AI car to a human. Physics state and race progress are kept; only the controller changes. */
+  takeOverBot(car, m) {
+    this.sim.byId.delete(car.id);
+    car.id = m.id;
+    car.name = m.name;
+    car.bot = false;
+    car.brain = null;
+    car.input = { th: 0, br: 0, st: 0, hb: 0, bo: 0 };
+    this.sim.byId.set(car.id, car);
+    this.log('late-join', this.code, m.name, 'took seat', car.grid);
   }
 
   /** Connection dropped. The seat stays reserved for a grace period. */

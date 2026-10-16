@@ -128,3 +128,13 @@ Caveat for R03/R04: no license is set, so no code was copied from them. Reading 
 - **Total: 87** (target: at least 80)
 
 Limitations of this count: the "read" depth varies. Four repos were read in code. The other 22 repos are metadata only. Search-result pages are snippets, not full reads. Snippets from earlier in the session are not counted, since their URLs were not saved.
+
+
+## Session 2026-10-16 additions (not counted in the 87 total)
+
+These were checked in this turn. They are listed separately so the 87-source total stays as it was.
+
+- K1. Kenney Car Kit 3.1, https://kenney.nl/assets/car-kit. Fetched. Stated licence: Creative Commons CC0. Used in game (4 body models). Licence file copied to `public/models/kenney-car-kit/License.txt`.
+- K2. Kenney Car Kit on itch.io, https://kenney-assets.itch.io/car-kit. Search result only. CC0 1.0. Not used.
+- K3. Forza Horizon logo colours, https://whatthelogo.com/logo/forza-horizon/49792. Fetched. Third-party logo colours #EA0C80, #231F20, #FBD5E9, #871254, #817E7F. Used as the stylesheet palette. These are not an official FH5 UI palette.
+- K4. @gltf-transform/cli 4.5.1 (npm). Installed from the npm registry. Used by the LOD tool. Documentation not fetched in this turn; its CLI help output was read.

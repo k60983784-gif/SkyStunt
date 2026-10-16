@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { getTrack } from '../shared/tracks.js';
 import { CARS } from '../shared/cars.js';
 import { mulberry32 } from '../shared/math.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 const TMP = new THREE.Vector3();
 
@@ -164,6 +166,96 @@ function buildScenery(t, theme, trackId, quality) {
 }
 
 // ---------- car models ----------
+// ---------- car body models (Kenney Car Kit, CC0; see public/models/kenney-car-kit/License.txt) ----------
+const CAR_MODEL_FILES = { bolt: 'race.glb', dart: 'race-future.glb', titan: 'sedan-sports.glb', viper: 'hatchback-sports.glb' };
+const CAR_MODEL_LENGTH = 4.0;      // metres, matches the physics box (2 x 2.0 half-length)
+const CAR_MODEL_YAW = 0;           // radians; set to Math.PI if a model faces backwards in the game
+const carBodyCache = new Map();
+
+export function loadCarBody(carId) {
+  const file = CAR_MODEL_FILES[carId] || CAR_MODEL_FILES.bolt;
+  if (!carBodyCache.has(file)) {
+    carBodyCache.set(file, new Promise((resolve, reject) => {
+      new GLTFLoader().load(`/models/kenney-car-kit/${file}`, (gltf) => {
+        const body = gltf.scene.getObjectByName('body');
+        if (!body) reject(new Error(`no body node in ${file}`));
+        else resolve(body);
+      }, undefined, reject);
+    }));
+  }
+  return carBodyCache.get(file);
+}
+
+// Dual-layer paint (see docs/RENDER_PIPELINE.md): conductor base with metallic flake normal detail,
+// plus a clear-coat layer at weight 1.0 and low roughness.
+let flakeTexture = null;
+function getFlakeTexture() {
+  if (flakeTexture) return flakeTexture;
+  const size = 256;
+  const h = new Float32Array(size * size);
+  for (let i = 0; i < h.length; i++) h[i] = Math.random() > 0.93 ? 1 : 0;
+  const data = new Uint8Array(size * size * 4);
+  const at = (x, y) => h[((y + size) % size) * size + ((x + size) % size)];
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const dx = at(x + 1, y) - at(x - 1, y), dy = at(x, y + 1) - at(x, y - 1);
+    const nx = -dx * 0.8, ny = -dy * 0.8, nz = 1;
+    const inv = 1 / Math.hypot(nx, ny, nz);
+    const o = (y * size + x) * 4;
+    data[o] = (nx * inv * 0.5 + 0.5) * 255; data[o + 1] = (ny * inv * 0.5 + 0.5) * 255; data[o + 2] = (nz * inv * 0.5 + 0.5) * 255; data[o + 3] = 255;
+  }
+  flakeTexture = new THREE.DataTexture(data, size, size);
+  flakeTexture.wrapS = flakeTexture.wrapT = THREE.RepeatWrapping;
+  flakeTexture.repeat.set(4, 4);
+  flakeTexture.generateMipmaps = true;
+  flakeTexture.minFilter = THREE.LinearMipmapLinearFilter;
+  flakeTexture.magFilter = THREE.LinearFilter;
+  flakeTexture.anisotropy = 4;
+  flakeTexture.needsUpdate = true;
+  return flakeTexture;
+}
+
+function paintMaterialFrom(src, tint) {
+  return new THREE.MeshPhysicalMaterial({
+    map: src.map || null,
+    color: tint ?? 0xffffff,
+    metalness: 0.85,
+    roughness: 0.42,
+    normalMap: getFlakeTexture(),
+    normalScale: new THREE.Vector2(0.18, 0.18),
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05,
+  });
+}
+
+// Replaces the procedural body with the Kenney model once it loads. The wheel rig is kept (physics pose drives it).
+export function attachCarBody(carObj, carId, tint) {
+  loadCarBody(carId).then((body) => {
+    const model = new THREE.Group();
+    const clone = body.clone(true);
+    model.add(clone);
+    model.rotation.y = CAR_MODEL_YAW;
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const s = CAR_MODEL_LENGTH / Math.max(size.z, 0.001);
+    model.scale.setScalar(s);
+    model.updateMatrixWorld(true);
+    const box2 = new THREE.Box3().setFromObject(model);
+    const centre = new THREE.Vector3(); box2.getCenter(centre);
+    model.position.set(-centre.x, -box2.min.y - 0.2, -centre.z);
+    model.traverse((o) => {
+      if (o.isMesh) {
+        const src = o.material;
+        o.material = paintMaterialFrom(Array.isArray(src) ? src[0] : src, tint);
+        o.castShadow = false;
+      }
+    });
+    for (const p of carObj.car.userData.proceduralParts || []) p.visible = false;
+    carObj.car.add(model);
+    carObj.car.userData.model = model;
+  }).catch((e) => console.warn('car model failed, keeping procedural body:', e.message));
+}
+
 export function buildCarMesh(carId, color) {
   const car = new THREE.Group();
   const body = new THREE.Mesh(
@@ -194,6 +286,7 @@ export function buildCarMesh(carId, color) {
     const h = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.08), lightMat); h.position.set(x, 0.3, 2.22); car.add(h);
     const tl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.08), tailMat); tl.position.set(x, 0.3, -2.02); car.add(tl);
   }
+  car.userData.proceduralParts = car.children.slice();
   // wheels: pivot groups for steering (front) and spin
   const wheels = [];
   const tireGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.3, 14);
@@ -279,6 +372,9 @@ export class World {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality === 'high' ? 2 : 1));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.55;
     this.camera = new THREE.PerspectiveCamera(65, 1, 0.5, 2500);
     this.camMode = 0;
     this.camPos = new THREE.Vector3();
@@ -288,7 +384,6 @@ export class World {
     this.trackGroup = null;
     this.particles = new Particles(this.scene, quality === 'low' ? 300 : 700);
     this.shake = 0;
-    this.clock = new THREE.Clock();
   }
 
   setSize(w, h) {
@@ -335,6 +430,7 @@ export class World {
   ensureCar(id, carId, color) {
     if (!this.cars.has(id)) {
       const mesh = buildCarMesh(carId, color ?? CARS[carId]?.color ?? 0xffffff);
+      attachCarBody(mesh, carId, color ?? CARS[carId]?.color ?? 0xffffff);
       this.scene.add(mesh.car);
       const label = makeLabel();
       mesh.car.add(label.sprite);

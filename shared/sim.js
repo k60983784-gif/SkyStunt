@@ -58,6 +58,8 @@ function rot(q, v) {
 const AXLE_SIGN = -1;
 // Collision groups: cars (membership 2) collide only with world/hazards (membership 1), never with each other.
 const CAR_GROUP = (0x0002 << 16) | 0x0001;
+// Steering assist for human cars (see drive()). Half-lives in seconds. Bots never use it.
+export const STEER_ASSIST = { deadzone: 0.05, minSpeed: 6, lateralHalfLife: 0.35, yawHalfLife: 0.3 };
 export const BOT_TUNING = { top: 0.95, skill: 0.05, turnNorm: 0.5, penalty: 0.6 };
 export const BOT_LAT_G = 1.0;
 export const BOT_STEER_GAIN = 1.2;
@@ -334,6 +336,20 @@ export class Sim {
     }
     car.boostingNow = boosting;
     car.steerAngle = steer;
+    // Steering assist (human cars only): with no steer input, grounded, not handbraking and moving,
+    // damp sideways slip and yaw rate so the car tracks straight instead of drifting or spinning.
+    car.assistOn = false;
+    if (!car.bot && grounded && !hb && Math.abs(st) < STEER_ASSIST.deadzone && speed > STEER_ASSIST.minSpeed && car.freezeT <= 0) {
+      car.assistOn = true;
+      const keepLat = Math.exp(-dt / STEER_ASSIST.lateralHalfLife);
+      const lat = v.x * right[0] + v.y * right[1] + v.z * right[2];
+      const dLat = lat * (1 - keepLat) * -1;          // velocity change along right to remove slip
+      const mass = car.body.mass();
+      car.body.applyImpulse({ x: right[0] * dLat * mass, y: right[1] * dLat * mass, z: right[2] * dLat * mass }, true);
+      const w = car.body.angvel();
+      const keepYaw = Math.exp(-dt / STEER_ASSIST.yawHalfLife);
+      car.body.setAngvel({ x: w.x, y: w.y * keepYaw, z: w.z }, true);
+    }
     if (boosting) car.boost = Math.max(0, car.boost - 22 * dt);
 
     // Airborne control: small torques so the nose can be steered and pitched in the air.
