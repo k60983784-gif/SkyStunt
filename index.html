@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="description" content="SkyStunt.io — a browser 3D stunt racing game with real vehicle physics, bridges, jumps and online multiplayer." />
+<meta name="theme-color" content="#070818" />
+<title>SkyStunt.io — Stunt Racing</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+<canvas id="scene" aria-label="3D race view"></canvas>
+
+<div id="hud" class="hud" aria-live="polite">
+  <div class="topbar">
+    <div class="tag modeTag"></div>
+    <div class="tag statusTag"></div>
+  </div>
+  <div class="hudLeft">
+    <div class="placeBox"><span class="place">P1</span><span class="placeTotal">/ 8</span></div>
+    <div class="lapBox">LAP <span class="lap">1</span>/<span class="lapsTotal">3</span></div>
+    <div class="timerBox"><div class="timer">00:00.00</div></div>
+    <div class="scoreBox"><div class="k">POINTS</div><div class="score">0</div></div>
+    <div class="livesBox"><div class="k">LIVES</div><div class="lives">♥♥♥</div></div>
+    <div class="limitTag"></div>
+  </div>
+  <div class="hudRight">
+    <div class="minimapWrap"><canvas class="minimap"></canvas></div>
+    <ol class="standings"></ol>
+  </div>
+  <div class="hudBottom">
+    <div class="speedBox"><span class="speed">0</span><small>km/h</small></div>
+    <div class="boostBox"><div class="k">BOOST</div><div class="boostBar"><div class="boostFill"></div></div></div>
+    <div class="keys">W/↑ gas · S/↓ brake · A/D steer · Space drift · Shift boost · C camera · P pause</div>
+  </div>
+  <div class="countdown hide"></div>
+  <div class="toasts"></div>
+  <button class="pauseBtn" aria-label="Pause">❚❚</button>
+</div>
+
+<div id="screen" class="screen"></div>
+<div id="badge" class="badge" role="status"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

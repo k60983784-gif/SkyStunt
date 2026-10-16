@@ -1,0 +1,45 @@
+# Builds the Docker image, pushes it to GitHub Container Registry, and redeploys the Northflank service.
+# Secrets needed in the GitHub repo: NORTHFLANK_API_KEY (API token), NF_PROJECT_ID, NF_SERVICE_ID.
+# The image must be public on GHCR, or add registry credentials in Northflank and set NF_CREDENTIALS_ID.
+name: Build and deploy to Northflank
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Deploy to Northflank
+        uses: northflank/deploy-to-northflank@v1
+        with:
+          northflank-api-key: ${{ secrets.NORTHFLANK_API_KEY }}
+          project-id: ${{ secrets.NF_PROJECT_ID }}
+          service-id: ${{ secrets.NF_SERVICE_ID }}
+          image-path: ${{ steps.meta.outputs.tags }}
+          credentials-id: ${{ secrets.NF_CREDENTIALS_ID }}

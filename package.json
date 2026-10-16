@@ -1,0 +1,26 @@
+{
+  "name": "skystunt-io",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SkyStunt.io — browser 3D stunt racing with Rapier physics and authoritative multiplayer.",
+  "scripts": {
+    "dev": "node server/index.js & vite",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test:multiplayer": "node tests/multiplayer.test.mjs http://localhost:8080",
+    "test:sim": "node tests/sim.test.mjs"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
+    "three": "0.186.1",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1",
+    "vite": "8.3.4"
+  }
+}

@@ -1,0 +1,24 @@
+// Two independent browser sessions: A creates a private room, B joins by code; both lobbies must list 2 players.
+import { chromium } from 'playwright';
+const URL = process.argv[2] || 'http://localhost:8080/';
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const mk = async () => { const ctx = await browser.newContext({ viewport: { width: 960, height: 540 } }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); }); await p.goto(URL, { waitUntil: 'load' }); return { p, errs }; };
+const A = await mk(), B = await mk();
+await A.p.click('#bPrivate');
+await A.p.fill('input[id=pname]', 'Alice');
+await A.p.click('#bGo');
+await A.p.waitForSelector('.codeBig', { timeout: 20000 });
+const code = (await A.p.textContent('.codeBig')).trim();
+await B.p.fill('#joinCode', code);
+await B.p.click('#bJoin');
+await B.p.waitForSelector('#setupErr, input[id=pname]', { timeout: 10000 });
+await B.p.fill('input[id=pname]', 'Bob');
+await B.p.click('#bGo');
+await B.p.waitForSelector('.codeBig', { timeout: 20000 });
+await A.p.waitForFunction(() => document.querySelectorAll('.players li').length === 2, null, { timeout: 15000 });
+const aCount = await A.p.locator('.players li').count();
+const bCount = await B.p.locator('.players li').count();
+const bCode = (await B.p.textContent('.codeBig')).trim();
+await A.p.screenshot({ path: '/tmp/online-lobby-a.png' });
+console.log(JSON.stringify({ room: code, roomSeenByBob: bCode, playersInAlice: aCount, playersInBob: bCount, errorsA: A.errs, errorsB: B.errs }, null, 2));
+await browser.close();
