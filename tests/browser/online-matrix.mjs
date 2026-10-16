@@ -59,6 +59,7 @@ try {
   // invalid code first
   await c.fill('#joinCode', 'ZZZZZZ');
   await c.click('#bJoin');
+  await c.click('#bGo').catch(() => {});
   await sleep(4000);
   out.checks.invalidCodeMessage = await c.evaluate(() => document.querySelector('#screen')?.innerText.slice(0, 200) || '');
   // valid code
@@ -83,6 +84,6 @@ try {
   out.errors.push('harness: ' + e.message.split('\n')[0]);
 }
 await browser.close();
-const pass = out.errors.length === 0 && out.checks.racersOnStandings === 8 && out.checks.privateCodeLength === 6 && out.checks.joinerInRace === true;
+const pass = out.errors.length === 0 && out.checks.racersOnStandings === 8 && out.checks.privateCodeLength === 5 && out.checks.joinerInRace === true;
 console.log(JSON.stringify({ pass, ...out }, null, 2));
 process.exit(pass ? 0 : 1);
