@@ -161,3 +161,19 @@ Open issues (not fixed):
 - The private-room test's Start-now click timed out once in the full matrix, while a standalone run started the race fine. Cause not diagnosed.
 - Car models are box primitives. No public 3D car, track or environment assets have been added yet.
 - No Forza-Horizon-style palette, no Asphalt-style control scheme, no licensed model research yet.
+
+## Joiner matrix (2026-10-16, build 6c0b00f on Render)
+
+`tests/browser/joiners.mjs` against https://skystunt-io.onrender.com — result: PASS (exit 0).
+
+| Joiner path | Result |
+|---|---|
+| Private room created, joiner types code | Joiner sees 2, host sees 2 |
+| Invite link `?room=CODE` (code prefilled) | Joiner sees 3, host sees 3 |
+| Invalid code | Shows "Room QQQQQ was not found." with Back. Fixed in this build (was stuck on "Connecting…") |
+| Quick Play, two players in the same lobby | Same room, host sees 2 |
+| Full room: 2 browser tabs + 6 protocol clients | Host sees 8. A 9th join is refused with "Room is full" |
+
+Known from earlier runs (same test, earlier builds):
+- The Quick Play check failed once. A protocol test (`scratch/quick-gap.mjs`) confirmed the cause: after the 12 s lobby window, a second Quick Play player gets a new room, because a race in progress is not joinable. This is a design gap, not fixed.
+- The full-room check once showed the host with 1 player; it showed 8 on the passing run. Not diagnosed.
