@@ -53,18 +53,22 @@ curl -s http://localhost:8080/healthz
 
 The `Dockerfile` builds `dist/` in one stage and runs `server/index.js` as the `node` user in the second stage. `.dockerignore` keeps `node_modules`, `tests`, `scratch`, and `docs` out of the image.
 
-## 4. Several-day hosting (needs your account)
+## 4. Several-day hosting on Northflank (status: API key verified, service not yet created)
 
-**Recommended: Northflank Sandbox.** The pricing page lists always-on compute, 2 free services, and 1 free database (F08). The page does not give the CPU or memory of a free service, so check the dashboard before deploying.
+Verified:
+- The API token works. It can see one project, `default`, which has no services yet (`GET /v1/projects/default/services`).
+- Northflank's API docs say a public GitHub repo can be built without linking a Git account. Only private repos need that link.
 
-Steps (I have not done them; they need your account):
-1. Create a Northflank account at `app.northflank.com/signup`. Accept the verification step if it asks for one.
-2. Connect the repository (GitHub) or upload a Docker image built from step 3.
-3. Create a **Combined service / Deployment** from the `Dockerfile`, port `8080`, health check `/healthz`.
-4. Set a public port so Northflank gives an HTTPS URL. Check that WebSocket upgrades on `/ws` pass through; this is not verified yet.
-5. Run the checks from section 2 against the new URL.
+Not verified: the free Sandbox CPU and memory limits (F08 says only "always-on, 2 free services"). The script uses `nf-compute-20` (0.2 shared vCPU, 512 MB, list price $5.40/mo) and a build plan `nf-compute-200-8`. Check both in the dashboard before relying on them.
 
-Other options and why they are weaker are in `HOSTING_SURVEY.md`. Render's free tier sleeps and drops WebSocket connections, and the Render blueprint in `render.yaml` uses the `starter` plan for that reason.
+Steps:
+1. Put the project in a **public** GitHub repo: `git remote add origin https://github.com/<you>/skystunt.git && git push -u origin main`. The repo already has one local commit (`main`).
+2. Dry run: `NF_REPO_URL=https://github.com/<you>/skystunt NF_PROJECT_ID=default node scripts/northflank-deploy.mjs`. Check the payload.
+3. Create the service: `NORTHFLANK_API_TOKEN=... NF_PROJECT_ID=default NF_REPO_URL=https://github.com/<you>/skystunt node scripts/northflank-deploy.mjs --apply`. This creates a combined service that builds the `Dockerfile` on Northflank and deploys it. The response includes the service ID.
+4. Wait for the build, then check the public URL: `curl https://<url>/healthz`, then `node tests/browser/smoke.mjs https://<url>/`.
+5. Revoke the API token in Northflank settings once the deploy is verified. It was pasted into a chat.
+
+Unverified until run: the combined-service response, whether WebSockets pass through Northflank's public port, and whether the Sandbox allows these plans. The image-based route (`NF_IMAGE`) remains in the script as a fallback, but it needs a registry first.
 
 ## 5. What I need from you to continue
 
